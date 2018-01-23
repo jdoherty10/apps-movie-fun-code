@@ -1,6 +1,8 @@
 package org.superbiz.moviefun;
 
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.superbiz.moviefun.albums.Album;
 import org.superbiz.moviefun.albums.AlbumFixtures;
@@ -18,12 +20,16 @@ public class HomeController {
     private final AlbumsBean albumsBean;
     private final MovieFixtures movieFixtures;
     private final AlbumFixtures albumFixtures;
+    private PlatformTransactionManager moviesPlatformTransactionManager;
+    private PlatformTransactionManager albumsPlatformTransactionManager;
 
-    public HomeController(MoviesBean moviesBean, AlbumsBean albumsBean, MovieFixtures movieFixtures, AlbumFixtures albumFixtures) {
+    public HomeController(MoviesBean moviesBean, AlbumsBean albumsBean, MovieFixtures movieFixtures, AlbumFixtures albumFixtures, PlatformTransactionManager moviesPlatformTransactionManager, PlatformTransactionManager albumsPlatformTransactionManager) {
         this.moviesBean = moviesBean;
         this.albumsBean = albumsBean;
         this.movieFixtures = movieFixtures;
         this.albumFixtures = albumFixtures;
+        this.moviesPlatformTransactionManager = moviesPlatformTransactionManager;
+        this.albumsPlatformTransactionManager = albumsPlatformTransactionManager;
     }
 
     @GetMapping("/")
@@ -33,13 +39,19 @@ public class HomeController {
 
     @GetMapping("/setup")
     public String setup(Map<String, Object> model) {
+        TransactionStatus moviesTransaction = moviesPlatformTransactionManager.getTransaction(null);
+
         for (Movie movie : movieFixtures.load()) {
             moviesBean.addMovie(movie);
         }
+        moviesPlatformTransactionManager.commit(moviesTransaction);
+
+        TransactionStatus albumsTransaction = albumsPlatformTransactionManager.getTransaction(null);
 
         for (Album album : albumFixtures.load()) {
             albumsBean.addAlbum(album);
         }
+        albumsPlatformTransactionManager.commit(albumsTransaction);
 
         model.put("movies", moviesBean.getMovies());
         model.put("albums", albumsBean.getAlbums());
